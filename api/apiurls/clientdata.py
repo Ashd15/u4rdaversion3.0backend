@@ -37,7 +37,8 @@ def dicom_list(request):
     return JsonResponse(list(data), safe=False)
 
 
-# Update age and gender for a DICOM record
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def update_dicom(request, dicom_id):
@@ -45,33 +46,28 @@ def update_dicom(request, dicom_id):
         dicom = DICOMData.objects.get(id=dicom_id)
         data = json.loads(request.body)
 
-        
-        # Update all fields safely
-        dicom.patient_name = data.get("patient_name", dicom.patient_name)
-        dicom.patient_id = data.get("patient_id", dicom.patient_id)
-        dicom.age = data.get("age", dicom.age)
-        dicom.gender = data.get("gender", dicom.gender)
-        dicom.study_description = data.get("study_description", dicom.study_description)
-        dicom.body_part_examined = data.get("body_part_examined", dicom.body_part_examined)
-        dicom.mlc = data.get("mlc", dicom.mlc)
-        dicom.urgent = data.get("urgent", dicom.urgent)
-        dicom.vip = data.get("vip", dicom.vip)
-        dicom.notes = data.get("notes", dicom.notes)
-        dicom.referring_doctor_name = data.get("referring_doctor_name", dicom.referring_doctor_name)
-        dicom.whatsapp_number = data.get("whatsapp_number", dicom.whatsapp_number)
-        dicom.contrast_used = data.get("contrast_used", dicom.contrast_used)
-        dicom.is_follow_up = data.get("is_follow_up", dicom.is_follow_up)
-        dicom.imaging_views = data.get("imaging_views", dicom.imaging_views)  # JSONField / CharField
-        dicom.inhouse_patient = data.get("inhouse_patient", dicom.inhouse_patient)
-        dicom.email = data.get("email", dicom.email)
+        # List of allowed editable fields
+        editable_fields = [
+            "patient_name", "patient_id", "age", "gender",
+            "study_description", "body_part_examined", "mlc",
+            "urgent", "vip", "notes", "referring_doctor_name",
+            "whatsapp_number", "contrast_used", "is_follow_up",
+            "imaging_views", "inhouse_patient", "email"
+        ]
+
+        # Update only the fields present in request
+        for field in editable_fields:
+            if field in data:
+                setattr(dicom, field, data[field])
 
         dicom.save()
         return JsonResponse({"success": True, "message": "Updated successfully"})
+
     except DICOMData.DoesNotExist:
         return JsonResponse({"success": False, "message": "DICOM record not found"}, status=404)
     except Exception as e:
+        print("Update error:", e)  # debug
         return JsonResponse({"success": False, "message": str(e)}, status=500)
-    
 
 
 
