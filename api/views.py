@@ -1,86 +1,11 @@
 from api.apiurls.tat_counters import fetch_tat_counters
 from pyorthanc import Orthanc
+from api.apiurls.clientdata import dicom_list,update_dicom,upload_history_file,fetch_patient_reports
 import json
 from django.http import JsonResponse   
 from django.views.decorators.csrf import csrf_exempt
 import sys
 
-
-
-
-
-# def server_data(request):
-#     # 🔎 Always log when this view is hit
-#     print(f"📡 server_data called with method: {request.method}")
-
-#     if request.method == 'POST':
-#         print("✅ POST request received")
-
-#         url = 'https://pacs.reportingbot.in/'
-#         server = Orthanc(url, username='admin', password='u4rad')
-        
-#         # Get studyid from POST body
-#         study_id = request.POST.get("studyid")
-#         if not study_id:
-#             print("❌ No studyid received in POST request")
-#             return JsonResponse({'error': 'No studyid received'}, status=400)
-
-#         print(f"📥 Received study_id: {study_id}")
-
-#         try:
-#             study = server.get_studies_id(study_id)
-#             print(f"📑 Study Info: {study}")
-#         except Exception as e:
-#             print(f"❌ Error fetching study: {e}")
-#             return JsonResponse({'error': 'Invalid studyid or PACS issue'}, status=500)
-
-#         series_ids = study.get('Series', [])
-#         print(f"🔗 Series IDs: {series_ids}")
-
-#         series = []
-#         studyUID = ''
-#         name = ''
-#         patient_id = ''
-#         studyDate = ''
-#         studyTime = ''
-
-#         for i in series_ids:
-#             try:
-#                 sampleInstance = server.get_series_id(i).get('Instances', [])[0]
-#                 tags = server.get_instances_id_tags(sampleInstance)
-
-#                 name = tags.get('0010,0010', {}).get('Value', '')  # Patient Name
-#                 studyUID = tags.get('0020,000d', {}).get('Value', '')  # StudyInstanceUID
-#                 studyDate = tags.get('0008,0020', {}).get('Value', '')  # Study Date
-#                 studyTime = tags.get('0008,0030', {}).get('Value', '')  # Study Time
-#                 seriesUID = tags.get('0020,000e', {}).get('Value', '')  # SeriesInstanceUID
-#                 seriesModality = tags.get('0008,0060', {}).get('Value', '')  # Modality
-#                 patient_id = tags.get('0010,0020', {}).get('Value', '')  # Patient ID
-#                 seriesDescription = tags.get('0008,103e', {}).get('Value', '')  # Description
-#                 seriesPreview = f'https://pacs.reportingbot.in/instances/{sampleInstance}/preview'
-
-#                 print(f"📂 Series UID: {seriesUID}, Modality: {seriesModality}, "
-#                       f"Desc: {seriesDescription}, Preview: {seriesPreview}")
-
-#                 series.append([seriesUID, seriesModality, seriesDescription, seriesPreview])
-#             except Exception as e:
-#                 print(f"⚠️ Error processing series {i}: {e}")
-
-#         response_data = {
-#             'study_uid': studyUID,
-#             'series': series,
-#             'name': name,
-#             'id': patient_id,
-#             'date': studyDate,
-#             'time': studyTime
-#         }
-
-#         print("✅ Returning response:", response_data)
-#         return JsonResponse(response_data)
-
-#     # Handle non-POST requests
-#     print("⚠️ GET method not allowed")
-#     return JsonResponse({'error': 'GET method not allowed'}, status=405)
 
 
 

@@ -41,6 +41,12 @@ class DICOMData(models.Model):
     radiologist_assigned_at = models.DateTimeField(null=True, blank=True)
     marked_done_at = models.DateTimeField(null=True, blank=True)
     notes_modified_at = models.DateTimeField(null=True, blank=True)
+    # ✅ New fields
+    contrast_used = models.BooleanField(default=False)  # Was contrast used?
+    is_follow_up = models.BooleanField(default=False)   # Follow-up / repeat case?
+    imaging_views = models.CharField(max_length=500, blank=True, null=True) 
+    inhouse_patient = models.BooleanField(default=False)  # In-house report?
+    email = models.EmailField(max_length=254, blank=True, null=True)
 
     
     def save(self, *args, **kwargs):

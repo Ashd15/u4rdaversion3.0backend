@@ -45,6 +45,11 @@ class Client(models.Model):
     can_edit_body_part_examined = models.BooleanField(default=False)
     can_edit_referring_doctor_name = models.BooleanField(default=False)
     can_edit_whatsapp_number = models.BooleanField(default=False)
+    can_edit_email = models.BooleanField(default=False)
+    can_edit_contrast_used = models.BooleanField(default=False)
+    can_edit_is_follow_up = models.BooleanField(default=False)
+    can_edit_inhouse_patient = models.BooleanField(default=False)
+
 
     upload_header = models.FileField(upload_to='headers/', null=True, blank=True)
     upload_footer = models.FileField(upload_to='footers/', null=True, blank=True)
