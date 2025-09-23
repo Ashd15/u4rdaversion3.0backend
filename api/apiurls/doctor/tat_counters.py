@@ -83,7 +83,11 @@ def fetch_tat_counters(request):
     "twostepcheck": dicom.twostepcheck,
     "notes": dicom.notes or "No notes",
     "location": dicom.location or "Unknown",
-    "radiologist": [r.name for r in dicom.radiologist.all()],
+    # "radiologist": [r.name for r in dicom.radiologist.all()],
+    "radiologist": [
+        f"{r.user.first_name} {r.user.last_name}" if r.user else "Unknown"
+        for r in dicom.radiologist.all()
+    ],
     "corporatecoordinator": [c.name for c in dicom.corporatecoordinator.all()],
     "body_part_examined": dicom.body_part_examined or "Unknown",
     "institution_name": dicom.institution_name or "None",
