@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import fetch_tat_counters,server_data,dicom_list,update_dicom,upload_history_file,fetch_patient_reports
+from .views import fetch_tat_counters,server_data,dicom_list,update_dicom,upload_history_file,fetch_patient_reports,get_all_coordinators
 
 
 urlpatterns = [
@@ -12,5 +12,6 @@ urlpatterns = [
 
     # Patient Reports
     path("fetch-reports/<int:dicom_id>/", fetch_patient_reports, name="fetch-reports"),
+    path('coordinators/', get_all_coordinators, name='get_all_coordinators'),
 
 ]
