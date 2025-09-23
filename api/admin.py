@@ -38,7 +38,7 @@ from .models.DailyCountECG import ECGSetCount
 
 from .models .StudyReport import StudyReport
 from .models .CKEditorTemplate import CKEditorTemplate
-
+from .models.bodypart import BodyPart
 
 
 admin.site.register(PersonalInfo)
@@ -80,6 +80,7 @@ admin.site.register(StudyReport)
 admin.site.register(DentalPatientInfo)
 admin.site.register(DoctorPatientInfo)
 admin.site.register(CKEditorTemplate)
+admin.site.register(BodyPart)
 
 # Register your models here.
 class DICOMFileInline(admin.TabularInline):

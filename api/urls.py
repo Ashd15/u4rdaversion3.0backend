@@ -1,5 +1,6 @@
 from django.urls import path
 from .views import fetch_tat_counters,server_data,dicom_list,update_dicom,upload_history_file,fetch_patient_reports,get_all_coordinators,fetch_radiologists,assign_radiologist,replace_radiologist
+from .views import fetch_body_parts
 
 
 urlpatterns = [
@@ -16,5 +17,6 @@ urlpatterns = [
     path('radiologists/', fetch_radiologists, name='fetch_radiologists'),
     path('assign-radiologist/', assign_radiologist, name='assign_radiologist'),
     path('replace-radiologist/', replace_radiologist, name='replace_radiologist'),
+    path("body-parts/", fetch_body_parts, name="fetch_body_parts"),
 
 ]

@@ -5,6 +5,7 @@ from api.apiurls.doctor.serverdata import server_data
 from api.apiurls.coordinator.coordinator import get_all_coordinators
 from api.apiurls.coordinator.radiologistlist import fetch_radiologists
 from api.apiurls.coordinator.assigncase import assign_radiologist,replace_radiologist
+from api.apiurls.bodypart.bodypart import fetch_body_parts
 
 
 # im
