@@ -3,7 +3,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 import json
-from api.models.DICOMData import DICOMData
+from api.models.DICOMData import DICOMData, PatientHistoryFile
 
 # List all DICOM records
 def dicom_list(request):

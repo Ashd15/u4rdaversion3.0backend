@@ -1,6 +1,5 @@
 from django.urls import path
-from .views import fetch_tat_counters,server_data,dicom_list,update_dicom,upload_history_file,fetch_patient_reports,get_all_coordinators,fetch_radiologists,assign_radiologist,replace_radiologist
-from .views import fetch_body_parts
+from .views import fetch_tat_counters,server_data,dicom_list,update_dicom,upload_history_file,fetch_patient_reports
 
 
 urlpatterns = [
@@ -19,4 +18,16 @@ urlpatterns = [
     path('replace-radiologist/', replace_radiologist, name='replace_radiologist'),
     path("body-parts/", fetch_body_parts, name="fetch_body_parts"),
 
+    # add ecg upload path
+     path("upload-ecg/", upload_ecg_api, name="upload_ecg_api"),
+     path("ecg_patients/", get_ecg_patients, name="get_ecg_patients"),
+     path("ecg_patients/<int:patient_id>/update-status/", update_patient_status, name="update_patient_status"),
+     path('get-locations/', get_locations, name='get_locations'),
+     path('manage-cardiologist/', manage_cardiologist, name='manage_cardiologist'),
+     path('cardiologists/', get_cardiologists, name='get_cardiologists'),
+     path("ecg_patients/<int:patient_id>/", update_patient, name="update_patient"),
+     path('ecg_stats/', ecg_stats_api, name='ecg_stats_api'),
+     path('upload-patient-ecgs/', upload_patient_ecg_api, name='upload_patient_ecg_api'),
 ]
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
