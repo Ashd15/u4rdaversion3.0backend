@@ -1,5 +1,8 @@
 from django.urls import path
 from .views import fetch_tat_counters,server_data,dicom_list,update_dicom,upload_history_file,fetch_patient_reports
+from .views import get_all_coordinators,fetch_radiologists,assign_radiologist,replace_radiologist,fetch_body_parts
+from .views import upload_ecg_api,update_patient,ecg_stats_api, get_locations,get_ecg_patients,update_patient_status,manage_cardiologist,get_cardiologists,upload_patient_ecg_api
+from django.conf import settings
 
 
 urlpatterns = [
