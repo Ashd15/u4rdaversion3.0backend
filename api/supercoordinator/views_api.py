@@ -10,27 +10,41 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from .serializers import ClientSerializer, DICOMDataSerializer, ServiceTATSettingSerializer, ServiceSerializer, InstitutionSerializer
 from api.models.DICOMData import DICOMData
-from api.models.Client import Client, Institution, ServiceTATSetting, Service, Institution
+from api.models.Client import Client, Institution, ServiceTATSetting, Service
 import pandas as pd
 from io import BytesIO
 from django.http import HttpResponse
 
 from django.contrib.auth.models import User, Group
 from rest_framework.decorators import api_view
+from rest_framework.views import APIView
 
 IST = pytz.timezone('Asia/Kolkata')
 
-def apply_filters_from_request(qs, request):
- 
-    name = request.GET.get('name', '').strip()
-    start_date = request.GET.get('start_date', '').strip()
-    end_date = request.GET.get('end_date', '').strip()
-    received_start_date = request.GET.get('received_start_date', '').strip()
-    received_end_date = request.GET.get('received_end_date', '').strip()
-    radiologist_ids = [int(x) for x in request.GET.getlist('radiologist') if x.isdigit()]
-    institutions = request.GET.getlist('institution')
-    status = request.GET.get('status', '').strip()
-    selected_modalities = request.GET.getlist('Modality')
+def apply_filters_from_body(qs, data):
+    name = data.get('name', '').strip()
+    start_date = data.get('start_date', '').strip()
+    end_date = data.get('end_date', '').strip()
+    received_start_date = data.get('received_start_date', '').strip()
+    received_end_date = data.get('received_end_date', '').strip()
+
+    radiologist_names = data.get('radiologist', [])
+    if isinstance(radiologist_names, str):
+        radiologist_names = [radiologist_names]
+
+    try:
+        radiologist_names = list(map(int, radiologist_names))
+    except Exception:
+        radiologist_names = []
+
+    institutions = data.get('institution', [])
+    if isinstance(institutions, str):
+        institutions = [institutions]
+
+    status = data.get('status', '').strip()
+    selected_modalities = data.get('Modality', [])
+    if isinstance(selected_modalities, str):
+        selected_modalities = [selected_modalities]
 
     filters = Q()
 
@@ -43,7 +57,7 @@ def apply_filters_from_request(qs, request):
             ed = datetime.strptime(end_date, "%Y-%m-%d").date()
             start_yyyymmdd = sd.strftime("%Y%m%d")
             end_yyyymmdd = ed.strftime("%Y%m%d")
-       
+
             qs = qs.extra(
                 where=[
                     "SUBSTR(study_date, 7, 4) || SUBSTR(study_date, 4, 2) || SUBSTR(study_date, 1, 2) BETWEEN %s AND %s"
@@ -52,6 +66,7 @@ def apply_filters_from_request(qs, request):
             )
         except ValueError:
             pass
+
     if received_start_date and received_end_date:
         try:
             rstart = datetime.strptime(received_start_date, "%Y-%m-%d").date()
@@ -64,20 +79,25 @@ def apply_filters_from_request(qs, request):
         except ValueError:
             pass
 
-    if radiologist_ids:
-        filters &= Q(radiologist__user__id__in=radiologist_ids)
+
+    if radiologist_names:
+        filters &= Q(radiologist__user__id__in=radiologist_names)   
+
+
     if institutions:
         filters &= Q(institution_name__in=institutions)
+
     if status:
         filters &= Q(isDone=(status.lower() == 'reported'))
+
     if selected_modalities:
         mod_q = Q()
         for m in selected_modalities:
             mod_q |= Q(Modality__exact=m)
         filters &= mod_q
 
-    qs = qs.filter(filters).distinct()
-    return qs
+    return qs.filter(filters).distinct()
+
 
 
 class StandardResultsSetPagination(PageNumberPagination):
@@ -85,20 +105,41 @@ class StandardResultsSetPagination(PageNumberPagination):
     page_size_query_param = 'page_size'
     max_page_size = 500
 
-class PatientListView(generics.ListAPIView):
-    serializer_class = DICOMDataSerializer
+
+class PatientListView(APIView):
     pagination_class = StandardResultsSetPagination
+    serializer_class = DICOMDataSerializer
 
-    def get_queryset(self):
-        
-
-        qs = DICOMData.objects.all().order_by('-id') 
-        
-        qs = qs.prefetch_related('history_files', 'radiologist')
-        
-        qs = apply_filters_from_request(qs, self.request)
-
+    def get_queryset(self, data):
+        qs = DICOMData.objects.all().order_by('-id').prefetch_related('history_files', 'radiologist')
+        qs = apply_filters_from_body(qs, data)
         return qs
+
+    def get(self, request, *args, **kwargs):
+        data = request.query_params
+        export = data.get('export', '0')
+        qs = self.get_queryset(data)
+
+        if export == '1':
+            return export_patient_qs_to_excel_response(qs)
+
+        paginator = self.pagination_class()
+        paginated_qs = paginator.paginate_queryset(qs, request, view=self)
+        serializer = self.serializer_class(paginated_qs, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+    def post(self, request, *args, **kwargs):
+        data = request.data
+        export = data.get('export', 0)
+        qs = self.get_queryset(data)
+
+        if str(export) == '1':
+            return export_patient_qs_to_excel_response(qs)
+
+        paginator = self.pagination_class()
+        paginated_qs = paginator.paginate_queryset(qs, request, view=self)
+        serializer = self.serializer_class(paginated_qs, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
 
     def list(self, request, *args, **kwargs):
@@ -162,16 +203,23 @@ def export_patient_qs_to_excel_response(qs):
 
 
 class RadiologistListView(generics.ListAPIView):
+    serializer_class = DICOMDataSerializer  
+
+    def get_queryset(self):
+        radiologist_group = Group.objects.filter(name='radiologist').first()
+        if not radiologist_group:
+            return User.objects.none()  
+        return User.objects.filter(groups=radiologist_group).distinct()
 
     def list(self, request, *args, **kwargs):
-        users = User.objects.filter(personalinfo__isnull=False).distinct()
+        queryset = self.get_queryset()
         data = [
             {
-                'id': u.id,
-                'name': u.get_full_name() or u.username,
-                'email': u.email
+                'id': user.id,
+                'name': user.get_full_name() or user.username,
+                'email': user.email
             }
-            for u in users
+            for user in queryset
         ]
         return Response(data)
 
