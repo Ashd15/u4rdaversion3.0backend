@@ -19,6 +19,10 @@ from django.contrib.auth.models import User, Group
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
 
+from rest_framework.permissions import AllowAny
+from rest_framework.decorators import api_view, permission_classes
+
+
 IST = pytz.timezone('Asia/Kolkata')
 
 def apply_filters_from_body(qs, data):
@@ -109,6 +113,8 @@ class StandardResultsSetPagination(PageNumberPagination):
 class PatientListView(APIView):
     pagination_class = StandardResultsSetPagination
     serializer_class = DICOMDataSerializer
+
+    permission_classes = [AllowAny]
 
     def get_queryset(self, data):
         qs = DICOMData.objects.all().order_by('-id').prefetch_related('history_files', 'radiologist')
@@ -204,6 +210,7 @@ def export_patient_qs_to_excel_response(qs):
 
 class RadiologistListView(generics.ListAPIView):
     serializer_class = DICOMDataSerializer  
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
         radiologist_group = Group.objects.filter(name='radiologist').first()
@@ -226,6 +233,8 @@ class RadiologistListView(generics.ListAPIView):
 
 class InstitutionListView(generics.ListAPIView):
 
+    permission_classes = [AllowAny]
+
     def list(self, request, *args, **kwargs):
         names = Client.objects.exclude(institutions__isnull=True)\
                               .values_list('institutions__name', flat=True)\
@@ -235,6 +244,8 @@ class InstitutionListView(generics.ListAPIView):
 
 
 class ClientListView(generics.ListCreateAPIView):
+
+    permission_classes = [AllowAny]
     def get(self, request):
         names = Client.objects.order_by('-id').values_list('name', flat=True)
         return Response(list(names))
@@ -243,6 +254,8 @@ class ClientListView(generics.ListCreateAPIView):
 class ClientListCreateView(generics.ListCreateAPIView):
     queryset = Client.objects.all().select_related('user').prefetch_related('institutions')
     serializer_class = ClientSerializer
+
+    permission_classes = [AllowAny]
 
     def perform_create(self, serializer):
         email = self.request.data.get('email')
@@ -269,9 +282,11 @@ class ClientRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
    
     queryset = Client.objects.all().select_related('user')
     serializer_class = ClientSerializer
+    permission_classes = [AllowAny]
 
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def modality_list(request):
     modalities = DICOMData.objects.exclude(Modality__isnull=True).values_list('Modality', flat=True).distinct()
     return Response(list(modalities))
@@ -279,9 +294,11 @@ def modality_list(request):
 class ServiceListView(generics.ListAPIView):
     queryset = Service.objects.all()
     serializer_class = ServiceSerializer
+    permission_classes = [AllowAny]
 
 class ServiceTATSettingListCreateView(generics.ListCreateAPIView):
     serializer_class = ServiceTATSettingSerializer
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
         qs = ServiceTATSetting.objects.all()
@@ -293,3 +310,4 @@ class ServiceTATSettingListCreateView(generics.ListCreateAPIView):
 class ServiceTATSettingRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = ServiceTATSetting.objects.all()
     serializer_class = ServiceTATSettingSerializer
+    permission_classes = [AllowAny]
