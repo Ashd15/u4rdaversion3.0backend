@@ -17,11 +17,10 @@ from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
-DEFAULT_OBSERVATION = [
-    "Heart rate is 110 BPM.",
-    "Normal Sinus Rhythm.",
-    "No significant ST-T changes seen."
-]
+from django.core.files.base import ContentFile
+from api.models.EcgPdfReport import EcgReport
+import datetime
+
 
 ECG_REPLACEMENTS = {
     "Normal ECG": "Normal Sinus Rhythm.",
@@ -34,8 +33,15 @@ ECG_REPLACEMENTS = {
 }
 
 
-def generate_report_text(ecg_finding, additional):
-    lines = DEFAULT_OBSERVATION.copy()
+def generate_report_text(patient, ecg_finding, additional):
+
+    heart_rate = getattr(patient, 'HeartRate', None)
+
+    lines = [
+        f"Heart rate is {heart_rate} BPM.",
+        "Normal Sinus Rhythm.",
+        "No significant ST-T changes seen."
+    ]
 
     if ecg_finding in ECG_REPLACEMENTS:
         if ecg_finding == "Normal sinus rhythm with t inversion in lead III":
@@ -48,8 +54,6 @@ def generate_report_text(ecg_finding, additional):
     if additional:
         report_text += f"\n\nAdditional Findings: {additional}"
     return report_text
-
-
 
 
 def generate_pdf_base64(patient, doctor, report_text):
@@ -152,7 +156,7 @@ def report_preview(request):
 
         patient = PatientDetails.objects.get(id=patient_id)
 
-        report_text = generate_report_text(ecg_finding, additional)
+        report_text = generate_report_text(patient, ecg_finding, additional)
 
         ecg_image_base64 = None
         if patient.image and patient.image.path and os.path.exists(patient.image.path):
@@ -185,7 +189,7 @@ def report_preview(request):
 @permission_classes([AllowAny])
 def report_finalize(request):
     """
-    Finalize report — mark done, generate downloadable PDF
+    Finalize report — mark done, generate and save PDF in EcgReport model.
     """
     try:
         patient_id = request.data.get("patient_id")
@@ -199,24 +203,37 @@ def report_finalize(request):
 
         patient = PatientDetails.objects.get(id=patient_id)
 
-        report_text = generate_report_text(ecg_finding, additional)
+        report_text = generate_report_text(patient, ecg_finding, additional)
+
         pdf_base64 = generate_pdf_base64(patient, doctor, report_text)
+        pdf_bytes = base64.b64decode(pdf_base64)
+
+        report_instance = EcgReport(
+            name=patient.PatientName,
+            patient_id=str(patient.id),
+            test_date=patient.TestDate,
+            report_date=datetime.date.today(),
+            location=patient.Location if hasattr(patient, "Location") else None
+        )
+
+        filename = f"ECG_Report_{patient.PatientName}_{datetime.date.today()}.pdf"
+        report_instance.pdf_file.save(filename, ContentFile(pdf_bytes))
+        report_instance.save()
 
         patient.isDone = True
         patient.status = True
         patient.save()
 
         return Response({
-            "message": "Report finalized successfully.",
-            "pdf_base64": pdf_base64
+            "message": "Report finalized and saved successfully.",
+            "pdf_url": report_instance.get_pdf_url(),  
+            "pdf_base64": pdf_base64  
         })
 
     except PatientDetails.DoesNotExist:
         return Response({"error": "Patient not found"}, status=404)
     except Exception as e:
         return Response({"error": str(e)}, status=500)
-
-
 
 
 @api_view(['POST'])
