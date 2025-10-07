@@ -14,13 +14,26 @@ from api.models.personalinfo import PersonalInfo
 from reportlab.lib import colors
 from reportlab.lib.units import mm
 
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Image
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Image, NextPageTemplate
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 from django.core.files.base import ContentFile
 from api.models.EcgPdfReport import EcgReport
 import datetime
 
+from reportlab.lib import colors
+from reportlab.lib.units import mm
+from io import BytesIO
+from PIL import Image as PILImage
+import os
+
+
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import (
+        BaseDocTemplate, Frame, PageTemplate, Table, TableStyle,
+        Paragraph, Spacer, PageBreak, Image
+    )
 
 ECG_REPLACEMENTS = {
     "Normal ECG": "Normal Sinus Rhythm.",
@@ -57,39 +70,66 @@ def generate_report_text(patient, ecg_finding, additional):
 
 
 def generate_pdf_base64(patient, doctor, report_text):
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4,
-                            rightMargin=15*mm, leftMargin=15*mm,
-                            topMargin=20*mm, bottomMargin=20*mm)
-    elements = []
+
+    buffer = BytesIO()
+
+    doc = BaseDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=15*mm,
+        leftMargin=15*mm,
+        topMargin=20*mm,
+        bottomMargin=20*mm
+    )
+
+    portrait_frame = Frame(
+        doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id='portrait'
+    )
+
+
+    landscape_width, landscape_height = landscape(A4)
+    landscape_frame = Frame(
+    0, 0,                
+    landscape_width,     
+    landscape_height,    
+    id='landscape',
+    leftPadding=0,
+    rightPadding=0,
+    topPadding=0,
+    bottomPadding=0
+)
+
+    portrait_template = PageTemplate(id='Portrait', frames=[portrait_frame])
+    landscape_template = PageTemplate(id='Landscape', frames=[landscape_frame], pagesize=landscape(A4))
+    doc.addPageTemplates([portrait_template, landscape_template])
+
     styles = getSampleStyleSheet()
     normal_style = styles['Normal']
-
-    table_style_font = ParagraphStyle('TableFont', parent=normal_style, fontName='Helvetica-Bold', fontSize=12)
-    title_style = ParagraphStyle('Title', parent=normal_style, fontName='Helvetica-Bold', fontSize=16, spaceAfter=10)
     subtitle_style = ParagraphStyle('Subtitle', parent=normal_style, fontName='Helvetica-Bold', fontSize=14, spaceAfter=8)
-    content_style = ParagraphStyle('Content', parent=normal_style, fontName='Helvetica-Bold', fontSize=12, spaceAfter=5)
+
+    elements = []
+
 
     patient_data = [
         ["Name:", patient.PatientName, "Patient ID:", str(patient.id), "Age:", str(patient.age)],
         ["Gender:", patient.gender, "Test Date:", str(patient.TestDate), "Report Date:", str(patient.ReportDate)]
     ]
+
     table = Table(patient_data, colWidths=[60, 100, 70, 80, 90, 90], rowHeights=30, hAlign='CENTER')
     table.setStyle(TableStyle([
-        ('GRID', (0,0), (-1,-1), 1, colors.black),
-        ('FONTNAME', (0,0), (-1,-1), 'Helvetica-Bold'),
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 15),
-        ('TOPPADDING', (0,0), (-1,-1), 15),
-        ('LEFTPADDING', (0,0), (-1,-1), 8),
-        ('RIGHTPADDING', (0,0), (-1,-1), 8),
-        ('FONTSIZE', (0,0), (-1,-1), 13),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('FONTSIZE', (0, 0), (-1, -1), 13),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
+        ('TOPPADDING', (0, 0), (-1, -1), 15),
     ]))
+
     elements.append(Spacer(1, 20))
     elements.append(table)
     elements.append(Spacer(1, 25))
+
 
     elements.append(Paragraph("<b><u>ECG</u></b>", subtitle_style))
     elements.append(Spacer(1, 12))
@@ -100,42 +140,59 @@ def generate_pdf_base64(patient, doctor, report_text):
         elements.append(Paragraph(f"<b>{line}</b>", subtitle_style))
         elements.append(Spacer(1, 10))
 
-    elements.append(Spacer(1, 220))  
 
-   
-    if doctor.signature and doctor.signature.path and os.path.exists(doctor.signature.path):
-     try: 
-        sig_img = Image(doctor.signature.path, width=120, height=50)
+    try:
+        elements.append(Spacer(1, 200))
+        if doctor.user.username == "nalincamp@gmail.com":
+            if doctor.signature and doctor.signature.path and os.path.exists(doctor.signature.path):
+                sig_img = Image(doctor.signature.path, width=380, height=130)
+                sig_img.hAlign = 'CENTER'
+                elements.append(sig_img)
+        else:
+            if doctor.signature and doctor.signature.path and os.path.exists(doctor.signature.path):
+                sig_img = Image(doctor.signature.path, width=120, height=50)
+                sig_img.hAlign = 'LEFT'
+                elements.append(sig_img)
+                elements.append(Spacer(1, 10))
+                elements.append(Paragraph(f"<b>Dr. {doctor.user.first_name} {doctor.user.last_name}</b>", subtitle_style))
+                elements.append(Paragraph("Consultant", subtitle_style))
+                elements.append(Paragraph("Non Invasive Cardiology", subtitle_style))
+    except Exception as e:
+        print("Error adding signature:", e)
 
-        sig_table = Table([[sig_img]], colWidths=[120])
-        sig_table.setStyle(TableStyle([
-            ('LEFTPADDING', (0,0), (-1,-1), -200),  
-            ('TOPPADDING', (0,0), (-1,-1), 0),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 0),
-            ('RIGHTPADDING', (0,0), (-1,-1), 0),
-        ]))
-        elements.append(sig_table)
-     except:
-        pass
 
-    elements.append(Spacer(1, 10))
-    elements.append(Paragraph(f"<b>Dr. {doctor.user.first_name} {doctor.user.last_name}</b>", subtitle_style))
-    elements.append(Paragraph("Consultant", subtitle_style))
-    elements.append(Paragraph("Non Invasive Cardiology", subtitle_style))
+    elements.append(PageBreak())  
+    elements.append(NextPageTemplate('Landscape'))
 
-    elements.append(PageBreak())
-    if patient.image and patient.image.path and os.path.exists(patient.image.path):
+    if hasattr(patient, 'image') and patient.image and patient.image.path and os.path.exists(patient.image.path):
         try:
-            img = Image(patient.image.path, width=450, height=270)  # adjust width/height as needed
+            pil_img = PILImage.open(patient.image.path)
+            rotated_img = pil_img.rotate(90, expand=True)
+
+            PAGE_WIDTH, PAGE_HEIGHT = landscape(A4)
+            img_w, img_h = rotated_img.size
+
+            scale = max((PAGE_WIDTH - 10) / img_w, (PAGE_HEIGHT - 10) / img_h)
+            new_w = img_w * scale
+            new_h = img_h * scale
+
+            img_buffer = BytesIO()
+            rotated_img.save(img_buffer, format='PNG')
+            img_buffer.seek(0)
+
+            img = Image(img_buffer, width=new_w, height=new_h)
+            img.hAlign = 'CENTER'
             elements.append(img)
-        except:
-            pass
+        except Exception as e:
+            print("Error adding rotated ECG image:", e)
+
 
     doc.build(elements)
-
     pdf_data = buffer.getvalue()
     buffer.close()
+
     return base64.b64encode(pdf_data).decode("utf-8")
+
 
 
 @api_view(['POST'])
