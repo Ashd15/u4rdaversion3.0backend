@@ -7,10 +7,10 @@ from .serializerss import PatientDetailsSerializer, LocationSerializer
 from api.models.personalinfo import PersonalInfo  
 from datetime import datetime
 import pytz  
-
+from rest_framework.permissions import AllowAny
 
 class LocationListAPIView(APIView):
-    permission_classes = []
+    permission_classes = [AllowAny]
 
     def get(self, request):
         locations = Location.objects.all()
@@ -22,7 +22,7 @@ class LocationListAPIView(APIView):
 
 
 class PatientListAPIView(APIView):
-    permission_classes = [] 
+    permission_classes = [AllowAny] 
 
     def get(self, request):
         username = request.query_params.get('username')
@@ -63,7 +63,7 @@ class PatientListAPIView(APIView):
 
 
 class PatientDetailAPIView(APIView):
-    permission_classes = []
+    permission_classes = [AllowAny]
 
     def get(self, request, pk):
         username = request.query_params.get('username')
@@ -86,7 +86,7 @@ class PatientDetailAPIView(APIView):
 
 
 class GreetingAPIView(APIView):
-    permission_classes = []
+    permission_classes = [AllowAny]
 
     def get(self, request):
         ist = pytz.timezone('Asia/Kolkata')
