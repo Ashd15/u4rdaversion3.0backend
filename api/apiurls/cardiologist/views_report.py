@@ -146,7 +146,7 @@ def generate_pdf_base64(patient, doctor, report_text):
 
 
     patient_data = [
-        ["Name:", patient.PatientName, "Patient ID:", str(patient.id), "Age:", str(patient.age)],
+        ["Name:", patient.PatientName, "Patient ID:", str(patient.PatientId), "Age:", str(patient.age)],
         ["Gender:", patient.gender, "Test Date:", str(patient.TestDate), "Report Date:", str(patient.ReportDate)]
     ]
 
