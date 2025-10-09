@@ -1,6 +1,7 @@
 import base64
 import io
 import os
+from matplotlib import scale
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -86,7 +87,6 @@ def generate_pdf_base64(patient, doctor, report_text):
         doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id='portrait'
     )
 
-
     landscape_width, landscape_height = landscape(A4)
     landscape_frame = Frame(
     0, 0,                
@@ -108,6 +108,41 @@ def generate_pdf_base64(patient, doctor, report_text):
     subtitle_style = ParagraphStyle('Subtitle', parent=normal_style, fontName='Helvetica-Bold', fontSize=14, spaceAfter=8)
 
     elements = []
+
+    elements.append(NextPageTemplate('Landscape'))
+
+    if hasattr(patient, 'image') and patient.image and patient.image.path and os.path.exists(patient.image.path):
+        try:
+            pil_img = PILImage.open(patient.image.path)
+            rotated_img = pil_img.rotate(90, expand=True)
+
+            PAGE_WIDTH, PAGE_HEIGHT = landscape(A4)
+            img_w, img_h = rotated_img.size
+
+
+            max_w = PAGE_WIDTH 
+            max_h = PAGE_HEIGHT
+            print(max_w, max_h)
+
+            scale = min(max_w / img_w, max_h / img_h)* 1.2035
+            print(scale)
+            new_w = (img_w * scale)+90
+            new_h = (img_h * scale) 
+            print(new_w, new_h)
+
+            img_buffer = BytesIO()
+            rotated_img.save(img_buffer, format='PNG')
+            img_buffer.seek(0)
+
+            img = Image(img_buffer, width=new_w, height=new_h)
+            img.hAlign = 'CENTER'
+            elements.append(img)
+        except Exception as e:
+            print("Error adding rotated ECG image:", e)
+
+    elements.append(NextPageTemplate('Portrait'))
+
+    elements.append(PageBreak())  
 
 
     patient_data = [
@@ -160,33 +195,7 @@ def generate_pdf_base64(patient, doctor, report_text):
     except Exception as e:
         print("Error adding signature:", e)
 
-
-    elements.append(PageBreak())  
-    elements.append(NextPageTemplate('Landscape'))
-
-    if hasattr(patient, 'image') and patient.image and patient.image.path and os.path.exists(patient.image.path):
-        try:
-            pil_img = PILImage.open(patient.image.path)
-            rotated_img = pil_img.rotate(90, expand=True)
-
-            PAGE_WIDTH, PAGE_HEIGHT = landscape(A4)
-            img_w, img_h = rotated_img.size
-
-            scale = max((PAGE_WIDTH - 10) / img_w, (PAGE_HEIGHT - 10) / img_h)
-            new_w = img_w * scale
-            new_h = img_h * scale
-
-            img_buffer = BytesIO()
-            rotated_img.save(img_buffer, format='PNG')
-            img_buffer.seek(0)
-
-            img = Image(img_buffer, width=new_w, height=new_h)
-            img.hAlign = 'CENTER'
-            elements.append(img)
-        except Exception as e:
-            print("Error adding rotated ECG image:", e)
-
-
+    
     doc.build(elements)
     pdf_data = buffer.getvalue()
     buffer.close()
